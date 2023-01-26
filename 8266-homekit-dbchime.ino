@@ -4,68 +4,80 @@
 #include "ESPButton.h"
 #include <DNSServer.h>
 #include <WiFiManager.h>	// https://github.com/tzapu/WiFiManager
-#include <Adafruit_NeoPixel.h>
 
 extern "C" homekit_server_config_t config;
-extern "C" void accessory_init();
-extern "C" void switch_toggle();
+extern "C" homekit_characteristic_t switcher;
 
-#define PIN_BUTTON 14 		// D5 Button
-#define PIN_BUTTON_FLASH 0 	// D3 Flash-Button of NodeMCU
+#include "chime.h"
+
+#define PIN_BUTTON D5 		// D5 Button
+
+WiFiManager wifiManager;
 
 void setup() {
 	Serial.begin(115200);
 	
 	// WiFiManager
-	WiFiManager wifiManager;
+	
 	wifiManager.setConfigPortalTimeout(180);  // in seconds
 	if(!wifiManager.autoConnect("ESP_Switch_AP")) {
     	printf("Failed to connect and hit timeout");
 	} 
 
+  Serial.println("Wifi Connected!");
+
 	//homekit_storage_reset(); // to remove the previous HomeKit pairing storage when you first run this new HomeKit example
 	homekit_setup();
+  Serial.println("Homekit init");
 }
 
 void loop() {
 	homekit_loop();
+  accessory_loop();
 	delay(10);
 }
 
 
 void homekit_setup() {
 	accessory_init();
+  Serial.println("accessory init");
 
 	pinMode(PIN_BUTTON, INPUT_PULLUP);
-	pinMode(PIN_BUTTON_FLASH, INPUT_PULLUP);
 	
 	ESPButton.add(0, PIN_BUTTON, LOW, true, true);
-	ESPButton.add(1, PIN_BUTTON_FLASH, LOW, true, true);
 	
 	ESPButton.setCallback([&](uint8_t id, ESPButtonEvent event) {
 		printf("Button %d Event: %s\n", id, ESPButton.getButtonEventDescription(event));
 		
 		if (event == ESPBUTTONEVENT_SINGLECLICK) {
-			switch_toggle();
+			change_song();
 		} else if (event == ESPBUTTONEVENT_DOUBLECLICK) {
 			// Free to configure
 		} else if (event == ESPBUTTONEVENT_LONGCLICK) {
 			printf("Rebooting...\n");
 			homekit_storage_reset();
+      wifiManager.resetSettings();
 			ESP.restart(); // or system_restart();
-		}
+    }
 	});
+  
 
 	ESPButton.begin();
-
+  Serial.println("button init");
+  switcher.getter=switch_on_get;
+	switcher.setter=switch_on_set;
 	arduino_homekit_setup(&config);
+  Serial.println("hksetup!");
 }
 
 static uint32_t next_heap_millis = 0;
 
 void homekit_loop() {
+  //Serial.println("hkloop");
 	ESPButton.loop();
+  //Serial.println("button loop done");
 	arduino_homekit_loop();
+  //Serial.println("ahkl done");
 	const uint32_t t = millis();
 	if (t > next_heap_millis) {
 		// Show heap info every 5 seconds
