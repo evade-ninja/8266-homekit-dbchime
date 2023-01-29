@@ -8,7 +8,7 @@
 
 #define MP3_RX D1
 #define MP3_TX D3
-#define PIN_LED_BUILD_IN 2  // Build in LED 
+#define PIN_LED_BUILD_IN D4  // Build in LED 
 
 #define LIGHT_TIME 10000
 #define NEOPIN D2
@@ -43,6 +43,8 @@ void change_song();
 
 
 void accessory_init() {
+
+  pinMode(PIN_LED_BUILD_IN, OUTPUT);
   Serial.println("neopixel start");
   // Init the NeoPixel(s)
 	pixels.begin();
@@ -108,6 +110,7 @@ void switch_on_set(homekit_value_t value) {
 
     // Turn on the LED
     pixels.setBrightness(255);
+    pixels.setPixelColor(0,pixels.Color(rgb_colors[0], rgb_colors[1], rgb_colors[2]));
     pixels.show();
 
     // Play the sound
@@ -119,7 +122,7 @@ void switch_on_set(homekit_value_t value) {
 		printf("OFF\n");
 		
     // Stop the sound
-    mp3.stop();
+    //mp3.stop();
 
     // Turn off the LED
     pixels.setBrightness(0);
@@ -154,6 +157,10 @@ void mp3_setup(){
 }
 
 void mp3_get_songs(){
+  yield();
+  delay(500);
+  yield();
+  delay(500);
   mp3_num_songs = mp3.readFileCounts();
   #ifdef DEBUG
   Serial.printf("There are %i songs\n", mp3_num_songs);
